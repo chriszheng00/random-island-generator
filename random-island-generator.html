@@ -1,0 +1,212 @@
+<!doctype html>
+<html>
+<head>
+  <title>test</title>
+  <style>
+    body {
+      font-family: monospace;
+      margin: 0px;
+      padding: 0px;
+      line-height: 110%;
+      font-size:15pt;
+    }
+    div {
+      height:22px;
+      width:22px;
+      display: inline-block;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<script>
+
+// var islandGenerator = {
+//   xmax: 80,
+//   ymax: 80,
+//   landAreaPercent: 100,
+//   seedPercent: 20,
+//   centerOffset: 3,
+//   init: function(xmax, yMax) {
+//     this.xmax = xmax;
+//   },
+//   randomRange: function(min, max) {
+//     //formula: floor[(range + 1) * {0, 1} + min + 1] - 1
+//     //note: (range + 1), (min + 1), and (-1) are modifiers that allow an inclusive pick of random #s
+//     return Math.floor((max - min + 1) * Math.random() + min + 1) - 1;
+//   }
+//   doingSomething: function() {
+//     this.landAreaPercent;
+//   }
+// }
+
+// islandGenerator.init(120, 300);
+
+//global constants
+  var xmax = 50;  //70
+  var ymax = 50;  //70
+  var landAreaPercent = 30;
+  var seedPercent = 20;
+  var centerOffset = 3;   //randomly offset '5' marker from center of each seed
+
+//Helper functions
+
+  //Returns a random # btwn min, max, inclusive
+  function randomRange(min, max) {
+    //formula: floor[(range + 1) * {0, 1} + min + 1] - 1
+    //note: (range + 1), (min + 1), and (-1) are modifiers that allow an inclusive pick of random #s
+    return Math.floor((max - min + 1) * Math.random() + min + 1) - 1;
+  }
+
+  function random(max) {
+    return randomRange(0, max);
+  }
+
+  function sin(angle) {
+    return Math.sin(Math.PI * angle / 180);   //Math.sin, Math.cos takes radians
+  }
+
+  function cos(angle) {
+    return Math.cos(Math.PI * angle / 180);
+  }
+
+//Generate world array
+  world = Array(ymax);
+  for (var y = 0; y < ymax; y++) {
+    world[y] = Array(xmax);
+  }
+
+  //Populate world array
+    var center = Array(2);
+    center[0] = Math.round(xmax / 2) + randomRange(-1, 1);            //center coords
+    center[1] = Math.round(ymax / 2) + randomRange(-1, 1); 
+    var landArea = Math.floor(xmax * ymax * landAreaPercent / 100);   //total land area
+    var seedArea = Math.round(landArea * seedPercent / 100);          //seed land area (circle of land from which the land)
+    var radius = Math.round(Math.sqrt(seedArea / Math.PI));           //seed radius
+      //note: difference in area btwn round up and round down can be significant
+
+    function drawLandSeed(center, centerOffset, radius) {   //array, number, number
+    //draw center
+      //world[center[0]][center[1]] = '5';
+      world[center[0] + randomRange(-centerOffset, centerOffset)][center[1] + randomRange(-centerOffset, centerOffset)] = '5';
+
+    //draw seed
+    //CZ: currently this takes 0.3seconds. could be optimized
+      for (var degree = 0; degree <= 360; degree += 0.3) {
+        var endpoint = [Number((radius*sin(degree)).toFixed(0)), Number((radius*cos(degree)).toFixed(0))];    //endpoint y, x
+        //console.log(degree, endpoint[0], endpoint[1]);    //testing
+        //world[center[0] + endpoint[0]][center[1] + endpoint[1]] = 'C';
+
+        //fill in area by iterating through length of radius
+        for (var n = 1; n <= radius; n += 1) {
+          fill = [];
+          fill[0] = Number((n * endpoint[0] / (radius + randomRange(-1, 1))).toFixed(0));
+          fill[1] = Number((n * endpoint[1] / (radius + randomRange(-1, 1))).toFixed(0));
+          if (world[center[0] + fill[0]][center[1] + fill[1]] != '5') {
+            if (n <= (radius*0.8)) {
+              world[center[0] + fill[0]][center[1] + fill[1]] = '2';
+            }
+            else {
+              world[center[0] + fill[0]][center[1] + fill[1]] = '1';
+            }
+          }
+        }
+      }
+    }
+
+    //draw the central land seed
+    drawLandSeed(center, radius);
+
+    //draw additional land seed
+    function proceduralGenerateLand(numberSeeds, radiusMin, radiusMax, yMin, yMax, xMin, xMax) {
+      for (var i = 0; i < numberSeeds; i++) {
+        console.log(randomRange(xMin, xMax), randomRange(yMin, yMax));
+        drawLandSeed([randomRange(xMin, xMax), randomRange(yMin, yMax)], centerOffset, randomRange(radiusMin, radiusMax));
+      }
+    }
+    proceduralGenerateLand(5, (radius - 1), (radius + 1), (center[0] - 9), (center[0] + 9), (center[1] - 9), (center[1] + 9));
+
+    // world[center[0] + radius][center[1]] = 'L';
+    // world[center[0] - radius][center[1]] = 'L';
+    // world[center[0]][center[1] + radius] = 'L';
+    // world[center[0]][center[1] - radius] = 'L';
+
+    function fillG3(radius4) {
+
+    }
+
+    function fillG5G4Ocean(r4) {    //r4 is radius of gradient 4 surrounding gradient 5
+      for (var y = 0; y < ymax; y++) {
+        for (var x = 0; x < xmax; x++) {
+          if (world[y][x]) {
+            if (world[y][x] == '5') {
+              world[y - r4][x - r4] = '4';  //set northwest corner
+
+              for (var j = -r4; j <= r4; j++) {
+                for (var i = -r4; i <= r4; i++) {
+                  if (world[y + j][x + i] != '5') {
+                    world[y + j][x + i] = '4';
+                  }
+                }
+              }
+
+            }
+          }
+          else {
+            world[y][x] = '~';
+          }
+          //world[y][x] += ' ';
+        }
+      }
+    }
+    fillG5G4Ocean(1);
+    fillG3(1);
+
+
+  // for (var y = 0; y < ymax; y++) {
+  //   for (var x = 0; x < xmax; x++) {
+  //     if (random(10) < 7) {
+  //       world[y][x] = 'L ';
+  //     }
+  //     else {
+  //       world[y][x] = '~ ';
+  //     }
+  //   }
+  // }
+
+
+//Display world array
+//CZ: for proof of concept only.
+  for (var y = 0; y < ymax; y++) {
+    for (var x = 0; x < xmax; x++) {
+      thisTile = world[y][x];
+      if (thisTile == '5') {
+        // document.write('<span style="color:#800000;">' + world[y][x] + ' </span>');
+        document.write('<div style="background:#800000;">' + world[y][x] + ' </div>');
+      }
+      else if (thisTile == '4') {
+        // document.write('<span style="color:#cc0000;">' + world[y][x] + ' </span>');
+        document.write('<div style="background:#cc0000;">' + world[y][x] + ' </div>');
+      }  
+      else if (thisTile == '3') {
+        // document.write('<span style="color:#ff6666;">' + world[y][x] + ' </span>');
+        document.write('<div style="background:#ff6666;">' + world[y][x] + ' </div>');
+      } 
+      else if (thisTile == '2') {
+        // document.write('<span style="color:#ff9999;">' + world[y][x] + ' </span>');
+        document.write('<div style="background:#ff9999;">' + world[y][x] + ' </div>');
+      } 
+      else if (thisTile == '1') {
+        // document.write('<span style="color:#ffb3b3;">' + world[y][x] + ' </span>');
+        document.write('<div style="background:#ffb3b3;">' + world[y][x] + ' </div>');
+      } 
+      else if (thisTile == '~') {
+        // document.write('<span style="color:#6699ff;">' + world[y][x] + ' </span>');
+        document.write('<div style="background:#6699ff;">' + world[y][x] + ' </div>');
+      }
+    }
+    document.write('<br />');
+  }
+</script>
+</body>
+</html>
